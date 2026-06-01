@@ -31,6 +31,7 @@ dependencies = [
 
 [project.scripts]
 ghost-transform = "ghost.cli:main"
+ghost-train = "ghost.train_cli:main"
 
 [build-system]
 requires = ["hatchling"]

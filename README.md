@@ -2,8 +2,6 @@
 
 Official repo for the paper "Mitigating Gradient Inversion Risks in Language Models via Token Obfuscation" in Asia CCS'26.
 
-This is a reconstruction of the original GHOST code base. Some of the experimental results might differ.
-
 ## Installation
 
 This repo uses `uv` for dependency management. Install `uv` first if it is not already available:
@@ -70,3 +68,71 @@ The pipeline has two explicit stages:
    candidates to minimize hidden-state MSE against the original tokenized sentence.
 
 Outputs and shadow-token caches are written under `data/<model-name>/` by default.
+
+## Training and Evaluation
+
+Training reads the transformation JSON produced by `ghost-transform`. Use
+`--train_source transformed` to train on obfuscated data and evaluate on the
+original test split, or `--train_source original` to train and evaluate on the
+original data using the same split.
+
+Classification utility evaluation reports loss, accuracy, and F1:
+
+```bash
+uv run ghost-train \
+  --task classification \
+  --data sst2 \
+  --model_name bert-base-uncased \
+  --train_source transformed \
+  --num_of_samples 1000
+```
+
+Original-data classification baseline:
+
+```bash
+uv run ghost-train \
+  --task classification \
+  --data sst2 \
+  --model_name bert-base-uncased \
+  --train_source original \
+  --num_of_samples 1000
+```
+
+Generative utility evaluation reports loss and perplexity:
+
+```bash
+uv run ghost-train \
+  --task generation \
+  --data enron \
+  --model_name gpt2 \
+  --train_source transformed \
+  --num_of_samples 1000
+```
+
+For Llama/Gemma, the default behavior uses LoRA when the model name contains
+`llama` or `gemma`. Use 4-bit loading on Linux/CUDA for larger models:
+
+```bash
+HF_TOKEN=... uv run ghost-train \
+  --task generation \
+  --data enron \
+  --model_name meta-llama/Llama-2-7b-hf \
+  --train_source transformed \
+  --device cuda:0 \
+  --load_in_4bit
+```
+
+Gradient-noise or gradient-pruning baselines can be applied to original-data
+training:
+
+```bash
+uv run ghost-train --task classification --data sst2 --model_name bert-base-uncased \
+  --train_source original --gradient_noise 0.05
+
+uv run ghost-train --task classification --data sst2 --model_name bert-base-uncased \
+  --train_source original --gradient_prune 0.99
+```
+
+Metrics are written to `results/<model-name>/..._metrics.json`, and best
+checkpoints are saved under `models/<model-name>/` unless `--no_save_model` is
+provided.

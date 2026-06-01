@@ -133,6 +133,8 @@ def _load_model_and_tokenizer(config: TransformConfig, device: torch.device) -> 
         model_kwargs["token"] = token
 
     if config.load_in_4bit:
+        if device.type != "cuda":
+            raise RuntimeError("4-bit bitsandbytes loading requires a CUDA device.")
         from transformers import BitsAndBytesConfig
 
         quantization_config = BitsAndBytesConfig(
@@ -142,7 +144,7 @@ def _load_model_and_tokenizer(config: TransformConfig, device: torch.device) -> 
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
         model_kwargs["quantization_config"] = quantization_config
-        model_kwargs["device_map"] = {"": str(device)} if device.type == "cuda" else "auto"
+        model_kwargs["device_map"] = {"": device.index if device.index is not None else 0}
 
     model = AutoModel.from_pretrained(config.model_name, **model_kwargs)
     if not config.load_in_4bit:
